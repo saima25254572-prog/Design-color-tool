@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Color Picker — Chroma</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/shared.css">
+  <style>
+    .picker-canvas-wrap {
+      position: relative; width: 100%; padding-bottom: 55%;
+      border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+      cursor: crosshair;
+    }
+    #pickerCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .hue-row { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; }
+    #hueSlider {
+      flex: 1; -webkit-appearance: none; height: 16px; border-radius: 8px;
+      background: linear-gradient(to right, #f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);
+      cursor: pointer; border: 1px solid var(--border);
+    }
+    #hueSlider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+      border: 3px solid #fff; box-shadow: 0 0 6px rgba(0,0,0,0.5); cursor: pointer;
+      background: transparent;
+    }
+    .alpha-row { display: flex; gap: 1rem; align-items: center; margin-top: 0.75rem; }
+    #alphaSlider {
+      flex: 1; -webkit-appearance: none; height: 16px; border-radius: 8px;
+      cursor: pointer; border: 1px solid var(--border);
+    }
+    #alphaSlider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+      border: 3px solid #fff; box-shadow: 0 0 6px rgba(0,0,0,0.5); cursor: pointer;
+      background: transparent;
+    }
+    .result-preview {
+      width: 56px; height: 56px; border-radius: 10px;
+      border: 1px solid var(--border); flex-shrink: 0;
+    }
+    .values-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 1rem; }
+    .val-box {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.75rem; cursor: pointer; transition: border-color 0.2s;
+    }
+    .val-box:hover { border-color: rgba(255,255,255,0.25); }
+    .val-box-label { font-size: 0.65rem; color: var(--accent-light); letter-spacing: 0.1em; font-family: 'Space Mono', monospace; }
+    .val-box-value { font-family: 'Space Mono', monospace; font-size: 0.82rem; color: var(--text); margin-top: 0.3rem; word-break: break-all; }
+    .history-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .hist-swatch {
+      width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
+      border: 1px solid var(--border); transition: transform 0.15s;
+    }
+    .hist-swatch:hover { transform: scale(1.15); }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-logo">Chro<span>ma</span></a>
+    <div class="nav-links">
+      <a href="palette.html">Palette</a>
+      <a href="gradient.html">Gradient</a>
+      <a href="converter.html">Converter</a>
+      <a href="picker.html" class="active">Picker</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="page-inner">
+      <div class="page-header">
+        <h1>💧 Color Picker</h1>
+        <p>Click anywhere in the canvas to pick a color visually.</p>
+      </div>
+
+      <div class="card">
+        <div class="picker-canvas-wrap" id="canvasWrap">
+          <canvas id="pickerCanvas"></canvas>
+        </div>
+
+        <div class="hue-row">
+          <span class="input-label" style="white-space:nowrap;">Hue</span>
+          <input type="range" id="hueSlider" min="0" max="360" value="263">
+        </div>
+
+        <div class="alpha-row">
+          <span class="input-label" style="white-space:nowrap;">Alpha</span>
+          <input type="range" id="alphaSlider" min="0" max="100" value="100">
+          <span id="alphaVal" style="font-family:'Space Mono',monospace;font-size:0.82rem;color:var(--accent-light);min-width:38px;">100%</span>
+        </div>
+
+        <div style="display:flex; gap:1rem; align-items:center; margin-top:1.25rem;">
+          <div class="result-preview" id="resultPreview"></div>
+          <div style="flex:1">
+            <label class="input-label">Selected Color</label>
+            <input type="text" class="input" id="selectedHex" value="#7c3aed" readonly>
+          </div>
+          <button class="btn btn-primary" onclick="copyHex()">Copy HEX</button>
+        </div>
+      </div>
+
+      <div class="values-grid">
+        <div class="val-box" onclick="copyId('hexOut')">
+          <div class="val-box-label">HEX</div>
+          <div class="val-box-value" id="hexOut">#7c3aed</div>
+        </div>
+        <div class="val-box" onclick="copyId('rgbOut')">
+          <div class="val-box-label">RGB</div>
+          <div class="val-box-value" id="rgbOut">rgb(124,58,237)</div>
+        </div>
+        <div class="val-box" onclick="copyId('hslOut')">
+          <div class="val-box-label">HSL</div>
+          <div class="val-box-value" id="hslOut">hsl(263,84%,58%)</div>
+        </div>
+        <div class="val-box" onclick="copyId('rgbaOut')">
+          <div class="val-box-label">RGBA</div>
+          <div class="val-box-value" id="rgbaOut">rgba(124,58,237,1)</div>
+        </div>
+        <div class="val-box" onclick="copyId('hslaOut')">
+          <div class="val-box-label">HSLA</div>
+          <div class="val-box-value" id="hslaOut">hsla(263,84%,58%,1)</div>
+        </div>
+        <div class="val-box" onclick="copyId('cssVarOut')">
+          <div class="val-box-label">CSS VAR</div>
+          <div class="val-box-value" id="cssVarOut">--color: #7c3aed</div>
+        </div>
+      </div>
+
+      <div class="card mt-2">
+        <label class="input-label" style="margin-bottom:1rem; display:block;">Pick History</label>
+        <div class="history-row" id="historyRow">
+          <span style="color:var(--muted); font-size:0.82rem;">No colors picked yet.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied!</div>
+
+  <script>
+    const canvas = document.getElementById('pickerCanvas');
+    const ctx = canvas.getContext('2d');
+    const wrap = document.getElementById('canvasWrap');
+    let hue = 263, alpha = 1;
+    let pickedX = 0.6, pickedY = 0.35;
+    const history = [];
+
+    function resizeCanvas() {
+      canvas.width = wrap.offsetWidth;
+      canvas.height = wrap.offsetHeight;
+      drawCanvas();
+    }
+
+    function drawCanvas() {
+      const w = canvas.width, h = canvas.height;
+      // Saturation gradient (white to hue color)
+      const gradH = ctx.createLinearGradient(0,0,w,0);
+      gradH.addColorStop(0, '#fff');
+      gradH.addColorStop(1, `hsl(${hue},100%,50%)`);
+      ctx.fillStyle = gradH;
+      ctx.fillRect(0,0,w,h);
+      // Lightness gradient (transparent to black)
+      const gradV = ctx.createLinearGradient(0,0,0,h);
+      gradV.addColorStop(0,'transparent');
+      gradV.addColorStop(1,'#000');
+      ctx.fillStyle = gradV;
+      ctx.fillRect(0,0,w,h);
+      // Draw cursor
+      const cx = pickedX*w, cy = pickedY*h;
+      ctx.beginPath();
+      ctx.arc(cx,cy,9,0,Math.PI*2);
+      ctx.strokeStyle='#fff';
+      ctx.lineWidth=2.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx,cy,9,0,Math.PI*2);
+      ctx.strokeStyle='rgba(0,0,0,0.4)';
+      ctx.lineWidth=1;
+      ctx.stroke();
+    }
+
+    function getColorAt(x,y) {
+      const data = ctx.getImageData(x,y,1,1).data;
+      return [data[0],data[1],data[2]];
+    }
+
+    function rgbToHex(r,g,b) { return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+
+    function rgbToHsl(r,g,b) {
+      r/=255;g/=255;b/=255;
+      const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;
+      if(max===min){h=s=0;}else{const d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);
+        switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}h/=6;}
+      return [Math.round(h*360),Math.round(s*100),Math.round(l*100)];
+    }
+
+    function pickAt(px,py) {
+      pickedX = Math.max(0,Math.min(1, px/canvas.width));
+      pickedY = Math.max(0,Math.min(1, py/canvas.height));
+      drawCanvas();
+      const [r,g,b] = getColorAt(Math.round(pickedX*canvas.width), Math.round(pickedY*canvas.height));
+      const hex = rgbToHex(r,g,b);
+      const [h,s,l] = rgbToHsl(r,g,b);
+      const a = alpha;
+      updateOutputs(hex,r,g,b,h,s,l,a);
+    }
+
+    function updateOutputs(hex,r,g,b,h,s,l,a) {
+      const preview = document.getElementById('resultPreview');
+      preview.style.background = `rgba(${r},${g},${b},${a})`;
+      document.getElementById('selectedHex').value = hex;
+      document.getElementById('hexOut').textContent = hex;
+      document.getElementById('rgbOut').textContent = `rgb(${r},${g},${b})`;
+      document.getElementById('hslOut').textContent = `hsl(${h},${s}%,${l}%)`;
+      document.getElementById('rgbaOut').textContent = `rgba(${r},${g},${b},${a})`;
+      document.getElementById('hslaOut').textContent = `hsla(${h},${s}%,${l}%,${a})`;
+      document.getElementById('cssVarOut').textContent = `--color: ${hex}`;
+      updateAlphaTrack(r,g,b);
+    }
+
+    function updateAlphaTrack(r,g,b) {
+      const slider = document.getElementById('alphaSlider');
+      slider.style.background = `linear-gradient(to right, rgba(${r},${g},${b},0), rgb(${r},${g},${b}))`;
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      const rect = canvas.getBoundingClientRect();
+      pickAt(e.clientX-rect.left, e.clientY-rect.top);
+      addHistory(document.getElementById('hexOut').textContent);
+    });
+    canvas.addEventListener('mousemove', e => {
+      if(e.buttons !== 1) return;
+      const rect = canvas.getBoundingClientRect();
+      pickAt(e.clientX-rect.left, e.clientY-rect.top);
+    });
+    canvas.addEventListener('touchstart', e => {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.touches[0];
+      pickAt(t.clientX-rect.left, t.clientY-rect.top);
+      e.preventDefault();
+    }, {passive:false});
+    canvas.addEventListener('touchmove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.touches[0];
+      pickAt(t.clientX-rect.left, t.clientY-rect.top);
+      e.preventDefault();
+    }, {passive:false});
+
+    document.getElementById('hueSlider').addEventListener('input', e => {
+      hue = e.target.value;
+      drawCanvas();
+      pickAt(pickedX*canvas.width, pickedY*canvas.height);
+    });
+
+    document.getElementById('alphaSlider').addEventListener('input', e => {
+      alpha = (e.target.value/100).toFixed(2);
+      document.getElementById('alphaVal').textContent = e.target.value + '%';
+      pickAt(pickedX*canvas.width, pickedY*canvas.height);
+    });
+
+    function addHistory(hex) {
+      if(history.includes(hex)) return;
+      history.unshift(hex);
+      if(history.length > 12) history.pop();
+      const row = document.getElementById('historyRow');
+      row.innerHTML = history.map(c=>`<div class="hist-swatch" style="background:${c}" title="${c}" onclick="applyHistory('${c}')"></div>`).join('');
+    }
+
+    function applyHistory(hex) {
+      document.getElementById('selectedHex').value = hex;
+      copyHex();
+    }
+
+    function copyHex() { navigator.clipboard.writeText(document.getElementById('hexOut').textContent).then(showToast); }
+    function copyId(id) { navigator.clipboard.writeText(document.getElementById(id).textContent).then(showToast); }
+    function showToast() {
+      const t = document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'),2000);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 50);
+  </script>
+</body>
+</html>
