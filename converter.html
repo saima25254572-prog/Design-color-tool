@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Color Converter — Chroma</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/shared.css">
+  <style>
+    .color-preview-box {
+      height: 140px; border-radius: 12px; border: 1px solid var(--border);
+      margin-bottom: 1.5rem; transition: background 0.3s;
+      display: flex; align-items: flex-end; padding: 1rem;
+    }
+    .preview-hex {
+      font-family: 'Space Mono', monospace; font-size: 1.4rem; font-weight: 700;
+      color: rgba(255,255,255,0.85); text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .format-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .format-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem;
+    }
+    .format-label {
+      font-family: 'Space Mono', monospace; font-size: 0.65rem;
+      letter-spacing: 0.15em; color: var(--accent-light); text-transform: uppercase;
+      margin-bottom: 0.6rem; display: block;
+    }
+    .format-value {
+      font-family: 'Space Mono', monospace; font-size: 0.95rem; color: var(--text);
+      word-break: break-all; margin-bottom: 0.75rem;
+    }
+    .input-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .input-sm { flex: 1; }
+    input[type="color"] {
+      width: 56px; height: 44px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface2); cursor: pointer; padding: 2px;
+    }
+    .contrast-row { display: flex; gap: 1rem; }
+    .contrast-box {
+      flex: 1; border-radius: 10px; padding: 1rem;
+      display: flex; flex-direction: column; gap: 0.3rem;
+    }
+    .contrast-ratio { font-family: 'Space Mono', monospace; font-size: 1.4rem; font-weight: 700; }
+    .contrast-label { font-size: 0.75rem; }
+    .pass { color: #22c55e; } .fail { color: #ef4444; }
+    @media (max-width:600px) { .format-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-logo">Chro<span>ma</span></a>
+    <div class="nav-links">
+      <a href="palette.html">Palette</a>
+      <a href="gradient.html">Gradient</a>
+      <a href="converter.html" class="active">Converter</a>
+      <a href="picker.html">Picker</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="page-inner">
+      <div class="page-header">
+        <h1>🔄 Color Converter</h1>
+        <p>Convert between HEX, RGB, HSL, HSV, and CMYK instantly.</p>
+      </div>
+
+      <div id="colorPreview" class="color-preview-box" style="background:#7c3aed">
+        <span class="preview-hex" id="previewHex">#7c3aed</span>
+      </div>
+
+      <div class="card">
+        <div class="input-row">
+          <input type="color" id="colorPicker" value="#7c3aed">
+          <input type="text" class="input input-sm" id="hexField" value="#7c3aed" placeholder="#RRGGBB" maxlength="7">
+          <button class="btn btn-primary" onclick="fromHex()">Convert</button>
+        </div>
+        <p style="font-size:0.78rem; color:var(--muted); margin-top:0.5rem;">Type any HEX value or use the color picker</p>
+      </div>
+
+      <div class="format-grid mt-2">
+        <div class="format-card">
+          <span class="format-label">RGB</span>
+          <div class="format-value" id="rgbVal">rgb(124, 58, 237)</div>
+          <button class="btn btn-ghost" style="width:100%; font-size:0.8rem;" onclick="copyVal('rgbVal')">Copy</button>
+        </div>
+        <div class="format-card">
+          <span class="format-label">HSL</span>
+          <div class="format-value" id="hslVal">hsl(263, 84%, 58%)</div>
+          <button class="btn btn-ghost" style="width:100%; font-size:0.8rem;" onclick="copyVal('hslVal')">Copy</button>
+        </div>
+        <div class="format-card">
+          <span class="format-label">HSV</span>
+          <div class="format-value" id="hsvVal">hsv(263, 75%, 93%)</div>
+          <button class="btn btn-ghost" style="width:100%; font-size:0.8rem;" onclick="copyVal('hsvVal')">Copy</button>
+        </div>
+        <div class="format-card">
+          <span class="format-label">CMYK</span>
+          <div class="format-value" id="cmykVal">cmyk(48%, 76%, 0%, 7%)</div>
+          <button class="btn btn-ghost" style="width:100%; font-size:0.8rem;" onclick="copyVal('cmykVal')">Copy</button>
+        </div>
+      </div>
+
+      <div class="card mt-2">
+        <label class="input-label" style="margin-bottom:1rem; display:block;">Contrast Checker</label>
+        <div class="contrast-row">
+          <div class="contrast-box" id="onWhite" style="background:#ffffff">
+            <span class="contrast-ratio" id="contrastWhite" style="color:#7c3aed">5.9:1</span>
+            <span class="contrast-label" style="color:#555">On White</span>
+            <span class="pass" id="wcagWhiteAA">AA ✓</span>
+          </div>
+          <div class="contrast-box" id="onBlack" style="background:#000000">
+            <span class="contrast-ratio" id="contrastBlack" style="color:#7c3aed">3.6:1</span>
+            <span class="contrast-label" style="color:#aaa">On Black</span>
+            <span id="wcagBlackAA" class="fail">AA ✗</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied!</div>
+
+  <script>
+    const picker = document.getElementById('colorPicker');
+    const hexField = document.getElementById('hexField');
+
+    picker.addEventListener('input', e => { hexField.value = e.target.value; convert(e.target.value); });
+    hexField.addEventListener('input', e => {
+      if(/^#[0-9a-fA-F]{6}$/.test(e.target.value)) { picker.value = e.target.value; convert(e.target.value); }
+    });
+
+    function fromHex() { convert(hexField.value); }
+
+    function hexToRgb(hex) {
+      return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+    }
+
+    function rgbToHsl(r,g,b) {
+      r/=255;g/=255;b/=255;
+      const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;
+      if(max===min){h=s=0;}else{const d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);
+        switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}h/=6;}
+      return [Math.round(h*360),Math.round(s*100),Math.round(l*100)];
+    }
+
+    function rgbToHsv(r,g,b) {
+      r/=255;g/=255;b/=255;
+      const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
+      let h;const s=max===0?0:d/max,v=max;
+      if(max===min){h=0;}else{switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}h/=6;}
+      return [Math.round(h*360),Math.round(s*100),Math.round(v*100)];
+    }
+
+    function rgbToCmyk(r,g,b) {
+      r/=255;g/=255;b/=255;
+      const k=1-Math.max(r,g,b);
+      if(k===1) return [0,0,0,100];
+      return [Math.round((1-r-k)/(1-k)*100),Math.round((1-g-k)/(1-k)*100),Math.round((1-b-k)/(1-k)*100),Math.round(k*100)];
+    }
+
+    function luminance(r,g,b) {
+      const [rs,gs,bs]=[r,g,b].map(c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);});
+      return 0.2126*rs+0.7152*gs+0.0722*bs;
+    }
+
+    function contrastRatio(l1,l2) {
+      const [a,b]=[Math.max(l1,l2),Math.min(l1,l2)];
+      return ((a+0.05)/(b+0.05)).toFixed(2);
+    }
+
+    function convert(hex) {
+      if(!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+      const [r,g,b] = hexToRgb(hex);
+      const [h,s,l] = rgbToHsl(r,g,b);
+      const [hv,sv,v] = rgbToHsv(r,g,b);
+      const [c,m,y,k] = rgbToCmyk(r,g,b);
+
+      document.getElementById('colorPreview').style.background = hex;
+      document.getElementById('previewHex').textContent = hex;
+      document.getElementById('rgbVal').textContent = `rgb(${r}, ${g}, ${b})`;
+      document.getElementById('hslVal').textContent = `hsl(${h}, ${s}%, ${l}%)`;
+      document.getElementById('hsvVal').textContent = `hsv(${hv}, ${sv}%, ${v}%)`;
+      document.getElementById('cmykVal').textContent = `cmyk(${c}%, ${m}%, ${y}%, ${k}%)`;
+
+      const lum = luminance(r,g,b);
+      const lumW = luminance(255,255,255), lumB = luminance(0,0,0);
+      const cw = contrastRatio(lum,lumW), cb = contrastRatio(lum,lumB);
+
+      document.getElementById('contrastWhite').textContent = cw+':1';
+      document.getElementById('contrastWhite').style.color = hex;
+      document.getElementById('contrastBlack').textContent = cb+':1';
+      document.getElementById('contrastBlack').style.color = hex;
+
+      const aaW = parseFloat(cw) >= 4.5;
+      const aaB = parseFloat(cb) >= 4.5;
+      document.getElementById('wcagWhiteAA').textContent = aaW ? 'AA ✓' : 'AA ✗';
+      document.getElementById('wcagWhiteAA').className = aaW ? 'pass' : 'fail';
+      document.getElementById('wcagBlackAA').textContent = aaB ? 'AA ✓' : 'AA ✗';
+      document.getElementById('wcagBlackAA').className = aaB ? 'pass' : 'fail';
+    }
+
+    function copyVal(id) {
+      navigator.clipboard.writeText(document.getElementById(id).textContent).then(showToast);
+    }
+    function showToast() {
+      const t = document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'),2000);
+    }
+
+    convert('#7c3aed');
+  </script>
+</body>
+</html>
