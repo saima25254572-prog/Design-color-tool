@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gradient Maker — Chroma</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/shared.css">
+  <style>
+    .gradient-preview {
+      height: 200px; border-radius: 16px; margin-bottom: 1.5rem;
+      border: 1px solid var(--border); transition: all 0.3s;
+    }
+    .stops-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .stop-item { display: flex; flex-direction: column; gap: 0.4rem; }
+    input[type="color"] {
+      width: 56px; height: 44px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface2); cursor: pointer; padding: 2px;
+    }
+    .type-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .type-btn {
+      flex:1; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; transition: all 0.2s;
+    }
+    .type-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .angle-row { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; }
+    input[type="range"] {
+      flex: 1; accent-color: var(--accent); height: 4px;
+    }
+    .code-block {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1rem;
+      font-family: 'Space Mono', monospace; font-size: 0.82rem;
+      color: #a78bfa; word-break: break-all;
+    }
+    .presets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; }
+    .preset-swatch {
+      height: 64px; border-radius: 10px; cursor: pointer; border: 1px solid var(--border);
+      transition: transform 0.15s, border-color 0.2s;
+    }
+    .preset-swatch:hover { transform: scale(1.05); border-color: rgba(255,255,255,0.25); }
+    .angle-val { font-family: 'Space Mono', monospace; font-size: 0.85rem; min-width: 42px; color: var(--accent-light); }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="../index.html" class="nav-logo">Chro<span>ma</span></a>
+    <div class="nav-links">
+      <a href="palette.html">Palette</a>
+      <a href="gradient.html" class="active">Gradient</a>
+      <a href="converter.html">Converter</a>
+      <a href="picker.html">Picker</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="page-inner">
+      <div class="page-header">
+        <h1>🌈 Gradient Maker</h1>
+        <p>Design custom gradients and export the CSS instantly.</p>
+      </div>
+
+      <div id="gradientPreview" class="gradient-preview"></div>
+
+      <div class="card">
+        <div class="type-row">
+          <button class="type-btn active" onclick="setType('linear', this)">Linear</button>
+          <button class="type-btn" onclick="setType('radial', this)">Radial</button>
+          <button class="type-btn" onclick="setType('conic', this)">Conic</button>
+        </div>
+
+        <div class="stops-row">
+          <div class="stop-item">
+            <label class="input-label">Color 1</label>
+            <input type="color" id="c1" value="#7c3aed">
+          </div>
+          <div class="stop-item">
+            <label class="input-label">Color 2</label>
+            <input type="color" id="c2" value="#ec4899">
+          </div>
+          <div class="stop-item">
+            <label class="input-label">Color 3 (optional)</label>
+            <input type="color" id="c3" value="#06b6d4">
+          </div>
+          <div class="stop-item" style="flex:1">
+            <label class="input-label">
+              <input type="checkbox" id="useC3" onchange="updateGradient()" style="width:auto;"> Use 3 stops
+            </label>
+          </div>
+        </div>
+
+        <div class="angle-row" id="angleRow">
+          <label class="input-label" style="white-space:nowrap;">Angle</label>
+          <input type="range" id="angle" min="0" max="360" value="135" oninput="updateGradient()">
+          <span class="angle-val" id="angleVal">135°</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="input-label">CSS Output</label>
+        <div class="code-block" id="cssOutput"></div>
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+          <button class="btn btn-primary" onclick="copyCss()">Copy CSS</button>
+          <button class="btn btn-ghost" onclick="copyBg()">Copy background value</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="input-label" style="margin-bottom:1rem; display:block;">Quick Presets</label>
+        <div class="presets-grid" id="presets"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied!</div>
+
+  <script>
+    let gradType = 'linear';
+    let currentGrad = '';
+
+    const presetData = [
+      ['#7c3aed','#ec4899'],['#f97316','#eab308'],['#06b6d4','#3b82f6'],
+      ['#10b981','#06b6d4'],['#f43f5e','#f97316'],['#6366f1','#a855f7'],
+      ['#0ea5e9','#10b981'],['#7c3aed','#3b82f6','#06b6d4'],
+      ['#ec4899','#f97316','#eab308'],['#1e1b4b','#7c3aed','#ec4899'],
+    ];
+
+    function setType(t, btn) {
+      gradType = t;
+      document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('angleRow').style.display = t === 'radial' ? 'none' : '';
+      updateGradient();
+    }
+
+    function updateGradient() {
+      const c1 = document.getElementById('c1').value;
+      const c2 = document.getElementById('c2').value;
+      const c3 = document.getElementById('c3').value;
+      const useC3 = document.getElementById('useC3').checked;
+      const angle = document.getElementById('angle').value;
+      document.getElementById('angleVal').textContent = angle + '°';
+
+      const stops = useC3 ? `${c1}, ${c2}, ${c3}` : `${c1}, ${c2}`;
+      let grad;
+      if (gradType === 'linear') grad = `linear-gradient(${angle}deg, ${stops})`;
+      else if (gradType === 'radial') grad = `radial-gradient(circle, ${stops})`;
+      else grad = `conic-gradient(from ${angle}deg, ${stops})`;
+
+      currentGrad = grad;
+      document.getElementById('gradientPreview').style.background = grad;
+      document.getElementById('cssOutput').textContent = `background: ${grad};`;
+    }
+
+    function applyPreset(colors) {
+      const useC3 = colors.length >= 3;
+      document.getElementById('c1').value = colors[0];
+      document.getElementById('c2').value = colors[1];
+      if (useC3) document.getElementById('c3').value = colors[2];
+      document.getElementById('useC3').checked = useC3;
+      updateGradient();
+    }
+
+    function buildPresets() {
+      const grid = document.getElementById('presets');
+      grid.innerHTML = presetData.map((colors, i) => {
+        const stops = colors.join(', ');
+        return `<div class="preset-swatch" style="background: linear-gradient(135deg, ${stops})"
+          onclick="applyPreset(${JSON.stringify(colors)})" title="Apply preset"></div>`;
+      }).join('');
+    }
+
+    ['c1','c2','c3'].forEach(id => document.getElementById(id).addEventListener('input', updateGradient));
+
+    function copyCss() { navigator.clipboard.writeText(`background: ${currentGrad};`).then(showToast); }
+    function copyBg() { navigator.clipboard.writeText(currentGrad).then(showToast); }
+    function showToast() {
+      const t = document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'), 2000);
+    }
+
+    buildPresets();
+    updateGradient();
+  </script>
+</body>
+</html>
